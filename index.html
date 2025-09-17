@@ -578,6 +578,7 @@
         function toggleCheck(element) {
             element.classList.toggle('checked');
             updateProgress();
+            saveData(); // Lưu ngay khi có thay đổi
         }
 
         // Cập nhật tiến độ
@@ -597,6 +598,149 @@
                     progressBar.setAttribute('data-progress', `${percentage}%`);
                 }
             });
+        }
+
+        // Lưu data vào localStorage
+        function saveData() {
+            const data = {
+                checkboxes: {},
+                notes: {},
+                effortLevels: {},
+                timestamp: new Date().toISOString()
+            };
+            
+            // Lưu trạng thái checkbox
+            document.querySelectorAll('.checkbox').forEach((checkbox, index) => {
+                data.checkboxes[`checkbox_${index}`] = checkbox.classList.contains('checked');
+            });
+            
+            // Lưu notes
+            document.querySelectorAll('input[type="text"]').forEach((input, index) => {
+                if (input.value) {
+                    data.notes[`note_${index}`] = input.value;
+                }
+            });
+            
+            // Lưu effort levels
+            document.querySelectorAll('.effort-selector').forEach((select, index) => {
+                data.effortLevels[`effort_${index}`] = select.value;
+            });
+            
+            localStorage.setItem('ieltsStudyData', JSON.stringify(data));
+            showSaveNotification();
+        }
+
+        // Load data từ localStorage
+        function loadData() {
+            try {
+                const saved = localStorage.getItem('ieltsStudyData');
+                if (saved) {
+                    const data = JSON.parse(saved);
+                    
+                    // Load checkbox states
+                    document.querySelectorAll('.checkbox').forEach((checkbox, index) => {
+                        if (data.checkboxes[`checkbox_${index}`]) {
+                            checkbox.classList.add('checked');
+                        }
+                    });
+                    
+                    // Load notes
+                    document.querySelectorAll('input[type="text"]').forEach((input, index) => {
+                        if (data.notes[`note_${index}`]) {
+                            input.value = data.notes[`note_${index}`];
+                        }
+                    });
+                    
+                    // Load effort levels
+                    document.querySelectorAll('.effort-selector').forEach((select, index) => {
+                        if (data.effortLevels[`effort_${index}`]) {
+                            select.value = data.effortLevels[`effort_${index}`];
+                        }
+                    });
+                    
+                    updateProgress();
+                    showLoadNotification(data.timestamp);
+                }
+            } catch (error) {
+                console.error('Error loading data:', error);
+            }
+        }
+
+        // Hiển thị thông báo lưu
+        function showSaveNotification() {
+            const notification = document.createElement('div');
+            notification.style.cssText = `
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                background: #4CAF50;
+                color: white;
+                padding: 10px 20px;
+                border-radius: 5px;
+                z-index: 9999;
+                font-size: 14px;
+                box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            `;
+            notification.textContent = '✅ Đã lưu thành công!';
+            document.body.appendChild(notification);
+            
+            setTimeout(() => {
+                notification.remove();
+            }, 2000);
+        }
+
+        // Hiển thị thông báo load
+        function showLoadNotification(timestamp) {
+            const notification = document.createElement('div');
+            notification.style.cssText = `
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                background: #2196F3;
+                color: white;
+                padding: 10px 20px;
+                border-radius: 5px;
+                z-index: 9999;
+                font-size: 14px;
+                box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            `;
+            const date = new Date(timestamp).toLocaleString('vi-VN');
+            notification.textContent = `📚 Đã load data từ ${date}`;
+            document.body.appendChild(notification);
+            
+            setTimeout(() => {
+                notification.remove();
+            }, 3000);
+        }
+
+        // Auto-save khi nhập notes
+        function setupAutoSave() {
+            // Lưu khi thay đổi notes
+            document.addEventListener('input', function(e) {
+                if (e.target.type === 'text') {
+                    debounce(saveData, 1000)();
+                }
+            });
+            
+            // Lưu khi thay đổi effort level
+            document.addEventListener('change', function(e) {
+                if (e.target.classList.contains('effort-selector')) {
+                    saveData();
+                }
+            });
+        }
+
+        // Debounce function để tránh lưu quá nhiều
+        function debounce(func, wait) {
+            let timeout;
+            return function executedFunction(...args) {
+                const later = () => {
+                    clearTimeout(timeout);
+                    func(...args);
+                };
+                clearTimeout(timeout);
+                timeout = setTimeout(later, wait);
+            };
         }
 
         // Chuyển đổi tab
@@ -621,14 +765,4 @@
             }
         }
 
-        // Khởi tạo
-        document.addEventListener('DOMContentLoaded', function() {
-            updateCountdown();
-            createOverviewTable();
-            
-            // Cập nhật countdown mỗi ngày
-            setInterval(updateCountdown, 24 * 60 * 60 * 1000);
-        });
-    </script>
-</body>
-</html>
+        // Kh
